@@ -14,7 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Roswell & qlot deps
+      - name: Install Roswell
+        run: |
+          curl -sL https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | bash
+          echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
+
+      - name: Cache SBCL & qlot deps
         id: cache
         uses: actions/cache@v4
         with:
@@ -23,16 +28,9 @@ jobs:
             .qlot
           key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
 
-      - name: Install Roswell
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          curl -sL https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | bash
-          echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
-
       - name: Install SBCL & qlot
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
           ros install "sbcl-bin/$SBCL_VERSION"
           ros use "sbcl-bin/$SBCL_VERSION"
           ros install qlot
@@ -54,7 +52,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Restore Roswell & qlot deps
+      - name: Install Roswell
+        run: |
+          curl -sL https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | bash
+          echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
+
+      - name: Restore SBCL & qlot deps
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -62,9 +65,6 @@ jobs:
             .qlot
           key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
           fail-on-cache-miss: true
-
-      - name: Setup PATH
-        run: echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
 
       - name: Test ${{ matrix.system }}
         run: qlot exec ros -e '(asdf:test-system "${{ matrix.system }}")'
@@ -81,7 +81,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Restore Roswell & qlot deps
+      - name: Install Roswell
+        run: |
+          curl -sL https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | bash
+          echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
+
+      - name: Restore SBCL & qlot deps
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -89,9 +94,6 @@ jobs:
             .qlot
           key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
           fail-on-cache-miss: true
-
-      - name: Setup PATH
-        run: echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
 
       - name: Run integration tests
         run: qlot exec ros -e '(asdf:test-system "cl-repository-integration-tests")'
@@ -103,7 +105,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Restore Roswell & qlot deps
+      - name: Install Roswell
+        run: |
+          curl -sL https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | bash
+          echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
+
+      - name: Restore SBCL & qlot deps
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -111,9 +118,6 @@ jobs:
             .qlot
           key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
           fail-on-cache-miss: true
-
-      - name: Setup PATH
-        run: echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
 
       - name: Install OCICL
         run: |
