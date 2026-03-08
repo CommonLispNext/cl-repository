@@ -26,6 +26,7 @@ jobs:
           path: |
             ~/.roswell
             .qlot
+            qlfile.lock
           key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
 
       - name: Install SBCL & qlot
@@ -63,6 +64,7 @@ jobs:
           path: |
             ~/.roswell
             .qlot
+            qlfile.lock
           key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
           fail-on-cache-miss: true
 
@@ -92,6 +94,7 @@ jobs:
           path: |
             ~/.roswell
             .qlot
+            qlfile.lock
           key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
           fail-on-cache-miss: true
 
@@ -116,6 +119,7 @@ jobs:
           path: |
             ~/.roswell
             .qlot
+            qlfile.lock
           key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
           fail-on-cache-miss: true
 
