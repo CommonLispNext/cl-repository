@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [main, lockfile-support]
+    branches: [main]
   pull_request:
 
 env:
