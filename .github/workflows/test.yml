@@ -2,43 +2,14 @@ name: Test
 
 on:
   push:
-    branches: [main, lockfile-support]
+    branches: [main]
   pull_request:
 
 env:
   SBCL_VERSION: 2.4.11
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Roswell
-        run: |
-          curl -sL https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | bash
-          echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
-
-      - name: Cache SBCL & qlot deps
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.roswell
-            .qlot
-            qlfile.lock
-          key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
-
-      - name: Install SBCL & qlot
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          ros install "sbcl-bin/$SBCL_VERSION"
-          ros use "sbcl-bin/$SBCL_VERSION"
-          ros install qlot
-          qlot install
-
   test:
-    needs: setup
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -58,24 +29,21 @@ jobs:
           curl -sL https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | bash
           echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
 
-      - name: Restore SBCL & qlot deps
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            ~/.roswell
-            .qlot
-            qlfile.lock
-          key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
-          fail-on-cache-miss: true
+      - name: Install SBCL
+        run: |
+          ros install "sbcl-bin/$SBCL_VERSION"
+          ros use "sbcl-bin/$SBCL_VERSION"
 
-      - name: Select SBCL version
-        run: ros use "sbcl-bin/$SBCL_VERSION"
+      - name: Install dependencies
+        run: |
+          ros install qlot
+          qlot install
 
       - name: Test ${{ matrix.system }}
-        run: qlot exec ros -e '(asdf:test-system "${{ matrix.system }}")'
+        run: |
+          qlot exec ros -e '(asdf:test-system "${{ matrix.system }}")'
 
   integration:
-    needs: setup
     runs-on: ubuntu-latest
     services:
       registry:
@@ -91,24 +59,21 @@ jobs:
           curl -sL https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | bash
           echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
 
-      - name: Restore SBCL & qlot deps
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            ~/.roswell
-            .qlot
-            qlfile.lock
-          key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
-          fail-on-cache-miss: true
+      - name: Install SBCL
+        run: |
+          ros install "sbcl-bin/$SBCL_VERSION"
+          ros use "sbcl-bin/$SBCL_VERSION"
 
-      - name: Select SBCL version
-        run: ros use "sbcl-bin/$SBCL_VERSION"
+      - name: Install dependencies
+        run: |
+          ros install qlot
+          qlot install
 
       - name: Run integration tests
-        run: qlot exec ros -e '(asdf:test-system "cl-repository-integration-tests")'
+        run: |
+          qlot exec ros -e '(asdf:test-system "cl-repository-integration-tests")'
 
   ocicl-compat:
-    needs: setup
     runs-on: ubuntu-latest
 
     steps:
@@ -119,18 +84,15 @@ jobs:
           curl -sL https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | bash
           echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
 
-      - name: Restore SBCL & qlot deps
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            ~/.roswell
-            .qlot
-            qlfile.lock
-          key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
-          fail-on-cache-miss: true
+      - name: Install SBCL
+        run: |
+          ros install "sbcl-bin/$SBCL_VERSION"
+          ros use "sbcl-bin/$SBCL_VERSION"
 
-      - name: Select SBCL version
-        run: ros use "sbcl-bin/$SBCL_VERSION"
+      - name: Install dependencies
+        run: |
+          ros install qlot
+          qlot install
 
       - name: Install OCICL
         run: |
