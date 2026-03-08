@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [main]
+    branches: [main, lockfile-support]
   pull_request:
 
 env:
@@ -68,6 +68,9 @@ jobs:
           key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
           fail-on-cache-miss: true
 
+      - name: Select SBCL version
+        run: ros use "sbcl-bin/$SBCL_VERSION"
+
       - name: Test ${{ matrix.system }}
         run: qlot exec ros -e '(asdf:test-system "${{ matrix.system }}")'
 
@@ -98,6 +101,9 @@ jobs:
           key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
           fail-on-cache-miss: true
 
+      - name: Select SBCL version
+        run: ros use "sbcl-bin/$SBCL_VERSION"
+
       - name: Run integration tests
         run: qlot exec ros -e '(asdf:test-system "cl-repository-integration-tests")'
 
@@ -122,6 +128,9 @@ jobs:
             qlfile.lock
           key: cl-deps-${{ env.SBCL_VERSION }}-${{ hashFiles('qlfile') }}
           fail-on-cache-miss: true
+
+      - name: Select SBCL version
+        run: ros use "sbcl-bin/$SBCL_VERSION"
 
       - name: Install OCICL
         run: |
