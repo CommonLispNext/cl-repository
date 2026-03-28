@@ -10,7 +10,7 @@
   (:import-from :cl-oci/media-types
                 #:+oci-image-manifest-v1+ #:+oci-image-index-v1+
                 #:+oci-image-layer-tar-gzip+ #:+cl-system-config-v1+
-                #:+cl-system-artifact-type+)
+                #:+cl-system-artifact-type+ #:+oci-empty-config+)
   (:import-from :cl-oci/annotations
                 #:+ann-title+ #:+ann-version+ #:+ann-licenses+ #:+ann-description+
                 #:+ann-created+ #:+ann-source+ #:+ann-authors+
@@ -18,10 +18,11 @@
   (:import-from :cl-oci/serialization #:to-json-string #:serialize-to-octets)
   (:import-from :cl-repository-packager/layer-builder
                 #:layer-result #:layer-result-data #:layer-result-digest
-                #:layer-result-size #:layer-result-role)
+                #:layer-result-size #:layer-result-role #:layer-result-title)
   (:export #:build-config-blob
            #:build-manifest-for-layers
            #:build-image-index
+           #:build-anchor-manifest
            #:built-manifest
            #:built-manifest-json
            #:built-manifest-digest
@@ -62,11 +63,16 @@
                                        :digest (parse-digest config-digest)
                                        :size config-size))
          (layer-descs (mapcar (lambda (lr)
+                              (let ((ann (make-hash-table :test 'equal)))
+                                (setf (gethash +ann-title+ ann)
+                                      (or (layer-result-title lr)
+                                          (format nil "~a.tar.gz" (layer-result-role lr))))
                                 (make-descriptor
                                  :media-type +oci-image-layer-tar-gzip+
                                  :digest (parse-digest (layer-result-digest lr))
-                                 :size (layer-result-size lr)))
-                              layers))
+                                 :size (layer-result-size lr)
+                                 :annotations ann)))
+                            layers))
          (manifest (make-manifest :config config-desc
                                   :layers layer-descs
                                   :artifact-type (or artifact-type +cl-system-artifact-type+)
@@ -94,3 +100,34 @@
          (json-octets (babel:string-to-octets json-str :encoding :utf-8))
          (digest (format-digest (compute-digest json-octets))))
     (values json-str digest (length json-octets))))
+
+(defun build-anchor-manifest (artifact-type &key annotations config-data subject)
+  "Build an empty-layer manifest for anchors and referrers.
+   CONFIG-DATA: octets for a config blob, or NIL for empty config.
+   SUBJECT: a descriptor pointing to the subject manifest (for referrers).
+   Returns a BUILT-MANIFEST."
+  (let* ((config-octets (or config-data
+                             (babel:string-to-octets "{}" :encoding :utf-8)))
+         (config-media-type (if config-data +cl-system-config-v1+ +oci-empty-config+))
+         (config-digest-obj (compute-digest config-octets))
+         (config-desc (make-descriptor :media-type config-media-type
+                                       :digest config-digest-obj
+                                       :size (length config-octets)))
+         (manifest (make-manifest :config config-desc
+                                  :layers nil
+                                  :artifact-type artifact-type
+                                  :subject subject
+                                  :annotations (or annotations (make-hash-table :test 'equal))))
+         (json-str (to-json-string manifest))
+         (json-octets (babel:string-to-octets json-str :encoding :utf-8))
+         (manifest-digest (format-digest (compute-digest json-octets)))
+         (manifest-size (length json-octets)))
+    (values (make-instance 'built-manifest
+                           :json json-str
+                           :digest manifest-digest
+                           :size manifest-size
+                           :descriptor (make-descriptor :media-type +oci-image-manifest-v1+
+                                                        :digest (parse-digest manifest-digest)
+                                                        :size manifest-size))
+            config-octets
+            (format-digest config-digest-obj))))

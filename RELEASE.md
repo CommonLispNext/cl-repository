@@ -1,3 +1,66 @@
+# v0.5.0 — OCICL-Compatible Tarball Format
+
+## OCICL-Compatible Packaging
+
+cl-repo packages now produce tarballs with the same structure OCICL expects, enabling bidirectional compatibility.
+
+### Packager Changes
+- Source layers now use a `<name>-<version>/` root directory prefix inside the tarball
+- Layer descriptor title annotation set to `<name>-<version>.tar.gz` (e.g., `cl-oci-0.2.0.tar.gz`)
+- `build-layer-from-directory` and `make-tar-gzip-from-files` accept `:tar-prefix` parameter
+- `layer-result` gains a `title` slot used by `build-manifest-for-layers` for the `org.opencontainers.image.title` annotation
+
+### Client Changes
+- `install-from-index` and `install-from-manifest` now compute and strip the `<name>-<version>/` prefix during extraction
+- New `compute-strip-prefix` helper exported from `cl-repository-client/installer`
+- No backward compatibility shim needed — all new images use the prefixed format
+
+### Benefits
+- **OCICL clients can consume cl-repo packages** directly (expected single subdirectory in tarball)
+- **`oras pull` + `tar -xzf`** produces a self-contained `<name>-<version>/` directory
+- **cl-repo clients** transparently strip the prefix during installation
+
+### Spec & Docs
+- `docs/spec.md` updated to v0.3.0 with "Source Layer Tarball Format" section
+- README oras section updated to reflect new tarball names and extraction paths
+
+### New Tests
+- `layer-builder-test`: tar prefix prepending, bare names, title slot
+- `ocicl-compat-test`: `compute-strip-prefix` test
+
+---
+
+# v0.4.0 — OCICL Compatibility + OCI Client Interop Fixes
+
+## OCICL Compatibility
+
+`cl-repo:load-system` can now pull and install packages from [OCICL](https://github.com/ocicl/ocicl) registries (`ghcr.io/ocicl/*`) alongside native cl-repo packages.
+
+```lisp
+(cl-repo:add-registry "https://ghcr.io" :namespace "ocicl" :type :ocicl)
+(cl-repo:load-system "alexandria")
+```
+
+- **Registry type parameter**: `add-registry` accepts `:type :ocicl` (default `:cl-repo`) to declare the format
+- **OCICL manifest handling**: skips empty config blobs, parses system name and version from layer title annotations (e.g., `alexandria-20240503-8514d8e.tar.gz`)
+- **Tarball prefix stripping**: `extract-tar-stream` gains `:strip-prefix` support for OCICL's nested directory structure during extraction
+- **Mixed registries**: configure multiple registries with different types; client searches in order and handles each format transparently
+- **Smart name parsing**: correctly handles hyphenated system names (e.g., `cl-ppcre`) by detecting the date segment boundary
+
+## OCI Client Interop Fixes (v0.3.0)
+
+- **`oras pull` support**: layer descriptors now include `org.opencontainers.image.title` annotations (e.g., `source.tar.gz`), allowing `oras pull` to correctly name downloaded files
+- **POSIX tar compliance**: tar entries with paths >100 characters use the ustar `prefix` field; checksum field trailing byte corrected to match POSIX spec — eliminates "Damaged tar archive" warnings on macOS/BSD tar
+- **Smaller packages**: excluded `.git/`, `.qlot/`, and other development directories from tarballs
+- **Publish action fix**: multiline Lisp code written to temp file instead of inline `ros -e` to avoid shell quoting issues in GitHub Actions
+
+## New Tests
+
+- `ocicl-compat-test`: layer title parsing, registry type handling, tar prefix stripping, duplicate prevention
+- Verified end-to-end: pull `ghcr.io/ocicl/alexandria:latest`, extract with prefix stripping, `alexandria.asd` at top level
+
+---
+
 # v0.1.0 — Initial Release
 
 OCI-based distribution system for Common Lisp packages. Packages are standard OCI artifacts pushable to any OCI-compliant registry (GHCR, Docker Hub, Quay, etc.) and pullable by any OCI client or the included CL-native client.

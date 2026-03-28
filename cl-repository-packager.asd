@@ -14,6 +14,11 @@
   :serial t
   :components ((:file "manifest-builder-test")
                (:file "asdf-plugin-test")
+               (:file "discover-systems-test")
+               (:file "normalize-dep-test")
+               (:file "source-adapter-test")
+               (:file "anchor-manifest-test")
+               (:file "layer-builder-test")
                (:file "all"))
   :perform (test-op (o c)
             (symbol-call :rove :run c)))

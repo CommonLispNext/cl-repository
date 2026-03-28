@@ -14,7 +14,12 @@
   :serial t
   :components ((:file "platform-resolver-test")
                (:file "lockfile-test")
+               (:file "qlot-integration-test")
                (:file "installer-test")
+               (:file "solver-test")
+               (:file "digest-cache-test")
+               (:file "ocicl-compat-test")
+               (:file "integrity-test")
                (:file "all"))
   :perform (test-op (o c)
             (symbol-call :rove :run c)))
