@@ -307,6 +307,30 @@ OCICL differences handled automatically: empty config blobs, tarball prefix stri
 
 cl-repo packages are also OCICL-compatible — the source layer uses an `<name>-<version>/` root directory prefix and a matching layer title (`<name>-<version>.tar.gz`), so OCICL's client can consume cl-repo packages directly.
 
+### Protected Systems
+
+When running inside a live Lisp image (e.g. connected via Swank/SLIME or Slynk/SLY), updating certain systems can break active connections. `cl-repository-client` provides two protection mechanisms that are enabled by default:
+
+**1. Prefix-based protection** -- systems matching `*protected-system-prefixes*` (default: `("swank" "slynk")`) are skipped when the corresponding package is present in the image. This covers the main system and all subsystems (e.g. `swank/sbcl`, `slynk/mrepl`).
+
+**2. Loaded-systems snapshot** -- on first use of `load-system` or `update`, a snapshot of all currently registered ASDF systems is taken. These systems are never updated or reinstalled. Controlled by `*protect-loaded-systems*` (default: `T`).
+
+```lisp
+;; Programmatic API
+(setf cl-repo:*protected-system-prefixes* '("swank" "slynk" "my-server"))
+(setf cl-repo:*protect-loaded-systems* t)     ; default
+(cl-repo:snapshot-loaded-systems)              ; explicit snapshot (normally automatic)
+```
+
+CLI: use `--protect` (repeatable) to add extra prefixes:
+
+```sh
+cl-repo update --protect hunchentoot --protect my-app
+cl-repo load alexandria --protect swank
+```
+
+Use `--force` to override all protection and force-update.
+
 ## Examples
 
 | Example | Description |

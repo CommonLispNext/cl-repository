@@ -307,6 +307,30 @@ sbcl --eval "(asdf:initialize-source-registry
 
 Пакеты `cl-repo` также OCICL-совместимы — source layer использует корневой префикс `<name>-<version>/` и соответствующий layer title (`<name>-<version>.tar.gz`), поэтому клиент OCICL может потреблять пакеты `cl-repo` напрямую.
 
+### Защита систем от обновления
+
+При работе внутри живого Lisp-образа (например, подключённого через Swank/SLIME или Slynk/SLY) обновление определённых систем может разорвать активные соединения. `cl-repository-client` предоставляет два механизма защиты, включённых по умолчанию:
+
+**1. Защита по префиксу** -- системы, совпадающие с `*protected-system-prefixes*` (по умолчанию: `("swank" "slynk")`), пропускаются, если соответствующий пакет присутствует в образе. Покрывает основную систему и все подсистемы (например, `swank/sbcl`, `slynk/mrepl`).
+
+**2. Снапшот загруженных систем** -- при первом использовании `load-system` или `update` фиксируется снимок всех зарегистрированных ASDF-систем. Эти системы никогда не обновляются и не переустанавливаются. Управляется переменной `*protect-loaded-systems*` (по умолчанию: `T`).
+
+```lisp
+;; Programmatic API
+(setf cl-repo:*protected-system-prefixes* '("swank" "slynk" "my-server"))
+(setf cl-repo:*protect-loaded-systems* t)     ; по умолчанию
+(cl-repo:snapshot-loaded-systems)              ; явный снапшот (обычно автоматический)
+```
+
+CLI: используйте `--protect` (повторяемая опция) для добавления дополнительных префиксов:
+
+```sh
+cl-repo update --protect hunchentoot --protect my-app
+cl-repo load alexandria --protect swank
+```
+
+Используйте `--force` для обхода всей защиты и принудительного обновления.
+
 ## Примеры
 
 | Пример | Описание |

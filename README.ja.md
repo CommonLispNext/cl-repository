@@ -307,6 +307,30 @@ OCICL との差異（empty config blobs、tarball prefix stripping、date-commit
 
 `cl-repo` パッケージ自体も OCICL 互換です。source layer は `<name>-<version>/` root prefix と対応 title（`<name>-<version>.tar.gz`）を持つため、OCICL クライアントで直接利用できます。
 
+### システム保護
+
+稼働中の Lisp イメージ（例: Swank/SLIME や Slynk/SLY で接続中）で特定システムを更新すると、アクティブな接続が切断される可能性があります。`cl-repository-client` はデフォルトで有効な 2 つの保護メカニズムを提供します:
+
+**1. プレフィックスベース保護** -- `*protected-system-prefixes*`（デフォルト: `("swank" "slynk")`）に一致するシステムは、対応パッケージがイメージ内に存在する場合スキップされます。メインシステムとすべてのサブシステム（例: `swank/sbcl`、`slynk/mrepl`）をカバーします。
+
+**2. ロード済みシステムのスナップショット** -- `load-system` または `update` の初回使用時に、現在登録されている全 ASDF システムのスナップショットが取得されます。これらのシステムは更新・再インストールされません。`*protect-loaded-systems*`（デフォルト: `T`）で制御します。
+
+```lisp
+;; Programmatic API
+(setf cl-repo:*protected-system-prefixes* '("swank" "slynk" "my-server"))
+(setf cl-repo:*protect-loaded-systems* t)     ; デフォルト
+(cl-repo:snapshot-loaded-systems)              ; 明示的スナップショット（通常は自動）
+```
+
+CLI: `--protect`（繰り返し指定可）でプレフィックスを追加:
+
+```sh
+cl-repo update --protect hunchentoot --protect my-app
+cl-repo load alexandria --protect swank
+```
+
+`--force` ですべての保護を無効化し、強制更新できます。
+
 ## 例
 
 | Example | Description |

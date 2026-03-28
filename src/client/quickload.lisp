@@ -28,6 +28,8 @@
                 #:load-system-init-files)
   (:import-from :cl-repository-client/lockfile
                 #:lockfile-entry #:add-lockfile-entry)
+  (:import-from :cl-repository-client/protected-systems
+                #:ensure-snapshot #:system-protected-p)
   (:import-from :babel #:octets-to-string)
   (:export #:*registries*
            #:add-registry
@@ -174,7 +176,7 @@
   (let* ((*quiet* (or *quiet* silent))
          (system-list (if (listp systems) systems (list systems)))
          (installed-any nil))
-    ;; Load digest cache on first use
+    (ensure-snapshot)
     (load-digest-cache)
     ;; Phase 1: Build install plan via SAT solver for systems not yet available
     (let ((plan (compute-install-plan system-list :version version :force force)))
@@ -206,11 +208,13 @@
 
 (defun compute-install-plan (system-names &key version force)
   "Use SAT solver to compute full transitive install plan.
-   Pins already-installed systems unless FORCE is true."
+   Pins already-installed systems unless FORCE is true.
+   Skips systems that are protected (see SYSTEM-PROTECTED-P)."
   (let ((plan nil))
     (dolist (name-raw system-names)
       (let ((name (string-downcase (string name-raw))))
-        (if (and (not force) (asdf:find-system name nil))
+        (if (and (not force) (or (asdf:find-system name nil)
+                                 (system-protected-p name)))
             (msg "~&; cl-repo: ~a already available via ASDF~%" name)
             (handler-case
                 (let ((resolved (build-install-plan name (or version :latest) *registries*

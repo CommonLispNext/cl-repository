@@ -18,6 +18,8 @@ exec ros -Q -- $0 "$@"
                 #:qlot-entry-kind #:qlot-entry-name #:qlot-entry-ref)
   (:import-from :cl-repository-client/quickload
                 #:*registries* #:add-registry)
+  (:import-from :cl-repository-client/protected-systems
+                #:*protected-system-prefixes*)
   (:import-from :cl-repository-packager/build-matrix
                 #:build-package #:build-overlay #:parse-overlay-spec)
   (:import-from :cl-repository-packager/publisher
@@ -73,16 +75,19 @@ exec ros -Q -- $0 "$@"
   (format t "  --recursive-dependencies Recursively publish dependency graphs~%")
   (format t "  --publish-ql-dependencies Fallback-publish unresolved deps via ql-export~%")
   (format t "  --deps-dist-url <url> Dist URL for ql-export fallback (Quicklisp/Ultralisp)~%")
-  (format t "  --all-systems         Publish all .asd systems from source tree~%"))
+  (format t "  --all-systems         Publish all .asd systems from source tree~%")
+  (format t "  --protect <name>      Protect a system from updates (repeatable)~%"))
 
 (defun parse-options (args)
   "Parse --key value pairs from args. Returns (values command-args options-plist).
-   Boolean flags (--quiet, --dry-run) don't consume the next argument."
+   Boolean flags (--quiet, --dry-run) don't consume the next argument.
+   Accumulate flags (--protect) collect multiple values into a list."
   (let ((cmd-args nil)
         (options nil)
         (boolean-flags '("quiet" "dry-run" "incremental" "remote" "force" "skip-catalog"
                          "publish-sources" "publish-dependencies" "recursive-dependencies"
-                         "publish-ql-dependencies" "all-systems" "use-lock")))
+                         "publish-ql-dependencies" "all-systems" "use-lock"))
+        (accumulate-flags '("protect")))
     (loop with i = 0
           while (< i (length args))
           for arg = (nth i args)
@@ -90,13 +95,23 @@ exec ros -Q -- $0 "$@"
                ((and (>= (length arg) 2) (string= "--" arg :end2 2))
                 (let* ((flag-name (subseq arg 2))
                        (key (intern (string-upcase flag-name) :keyword)))
-                  (if (member flag-name boolean-flags :test #'string-equal)
-                      (progn (push t options) (push key options) (incf i))
-                      (let ((val (when (< (1+ i) (length args))
-                                   (nth (1+ i) args))))
-                        (push val options)
-                        (push key options)
-                        (incf i 2)))))
+                  (cond
+                    ((member flag-name boolean-flags :test #'string-equal)
+                     (push t options) (push key options) (incf i))
+                    ((member flag-name accumulate-flags :test #'string-equal)
+                     (let ((val (when (< (1+ i) (length args))
+                                  (nth (1+ i) args))))
+                       (let ((prev (getf options key)))
+                         (if prev
+                             (setf (getf options key) (append prev (list val)))
+                             (progn (push (list val) options) (push key options))))
+                       (incf i 2)))
+                    (t
+                     (let ((val (when (< (1+ i) (length args))
+                                  (nth (1+ i) args))))
+                       (push val options)
+                       (push key options)
+                       (incf i 2))))))
                (t (push arg cmd-args)
                   (incf i))))
     (values (nreverse cmd-args) options)))
@@ -115,6 +130,8 @@ exec ros -Q -- $0 "$@"
           (progn
             (when registry-url
               (add-registry registry-url :namespace (or namespace "cl-systems")))
+            (dolist (name (getf opts :protect))
+              (pushnew name *protected-system-prefixes* :test #'string=))
             (when (getf opts :publish-ql-dependencies)
               #+quicklisp (ql:quickload "cl-repository-ql-exporter" :silent t))
             (cond

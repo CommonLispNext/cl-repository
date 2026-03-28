@@ -8,4 +8,5 @@
    :cl-repository-client/tests/solver-test
    :cl-repository-client/tests/digest-cache-test
    :cl-repository-client/tests/ocicl-compat-test
-   :cl-repository-client/tests/integrity-test))
+   :cl-repository-client/tests/integrity-test
+   :cl-repository-client/tests/protected-systems-test))
