@@ -18,6 +18,8 @@
   (:import-from :cl-repository-client/constraint-builder #:scan-installed-systems)
   (:import-from :cl-repository-client/asdf-integration #:configure-asdf-source-registry)
   (:import-from :cl-repository-client/quickload #:*registries*)
+  (:import-from :cl-repository-client/protected-systems
+                #:ensure-snapshot #:system-protected-p)
   (:import-from :cl-repository-client/qlot-integration
                 #:read-qlfile #:qlot-entry-kind #:qlot-entry-name #:qlot-entry-ref
                 #:qlot-installable-entry-p #:read-qlfile-lock #:build-qlot-sync-plan
@@ -174,17 +176,23 @@
           (msg "~&Info failed: ~a~%" e))))))
 
 (defun cmd-update (&key registry-url namespace)
-  "Update all installed systems to latest versions."
+  "Update all installed systems to latest versions.
+   Skips systems that are protected (see SYSTEM-PROTECTED-P)."
+  (ensure-snapshot)
   (let ((entries (read-lockfile)))
     (if entries
         (dolist (entry entries)
-          (msg "~&Updating ~a...~%" (lockfile-entry-system entry))
-          (handler-case
-              (cmd-install (format nil "~a:latest" (lockfile-entry-system entry))
-                           :registry-url (or registry-url (lockfile-entry-registry entry))
-                           :namespace namespace)
-            (error (e)
-              (msg "  Failed: ~a~%" e))))
+          (let ((name (lockfile-entry-system entry)))
+            (if (system-protected-p name)
+                (msg "~&Skipping ~a (protected)~%" name)
+                (progn
+                  (msg "~&Updating ~a...~%" name)
+                  (handler-case
+                      (cmd-install (format nil "~a:latest" name)
+                                   :registry-url (or registry-url (lockfile-entry-registry entry))
+                                   :namespace namespace)
+                    (error (e)
+                      (msg "  Failed: ~a~%" e)))))))
         (msg "~&No lockfile found. Nothing to update.~%"))))
 
 (defun cmd-lock ()

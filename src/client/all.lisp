@@ -1,6 +1,7 @@
 (uiop:define-package :cl-repository-client/all
   (:nicknames :cl-repository-client :cl-repo)
   (:use-reexport
+   :cl-repository-client/protected-systems
    :cl-repository-client/platform-resolver
    :cl-repository-client/integrity
    :cl-repository-client/installer
