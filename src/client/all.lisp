@@ -2,6 +2,7 @@
   (:nicknames :cl-repository-client :cl-repo)
   (:use-reexport
    :cl-repository-client/platform-resolver
+   :cl-repository-client/integrity
    :cl-repository-client/installer
    :cl-repository-client/qlot-integration
    :cl-repository-client/digest-cache

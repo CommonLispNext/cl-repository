@@ -13,7 +13,7 @@ exec ros -Q -- $0 "$@"
   (:import-from :cl-oci/runtime #:*quiet* #:*dry-run*)
   (:import-from :cl-repository-client/commands
                 #:cmd-install #:cmd-list #:cmd-search #:cmd-info #:cmd-update
-                #:cmd-lock #:cmd-restore #:cmd-sync-qlot)
+                #:cmd-lock #:cmd-restore #:cmd-verify #:cmd-sync-qlot)
   (:import-from :cl-repository-client/qlot-integration
                 #:qlot-entry-kind #:qlot-entry-name #:qlot-entry-ref)
   (:import-from :cl-repository-client/quickload
@@ -45,6 +45,7 @@ exec ros -Q -- $0 "$@"
   (format t "  add-overlay <name>    Add platform overlay to published package~%")
   (format t "  lock                  Generate/update lockfile from installed systems~%")
   (format t "  restore               Install exact versions from lockfile~%")
+  (format t "  verify [name]         Verify installed systems against file manifests~%")
   (format t "  ql-export <url>       Export Quicklisp dist to OCI registry~%")
   (format t "  publish-github <repo> Package and publish from GitHub (owner/repo or URL)~%")
   (format t "  sync-qlot             Install/publish dependencies from qlfile~%")
@@ -223,6 +224,9 @@ exec ros -Q -- $0 "$@"
 
             ((string-equal command "restore")
              (cmd-restore :registry-url registry-url :namespace namespace))
+
+            ((string-equal command "verify")
+             (cmd-verify :system-name (first cmd-args)))
 
             ((string-equal command "ql-export")
              (unless cmd-args

@@ -17,6 +17,7 @@
   (:import-from :cl-oci/annotations #:+ann-title+)
   (:import-from :yason)
   (:import-from :cl-repository-client/platform-resolver #:resolve-manifests)
+  (:import-from :cl-repository-client/integrity #:record-file-manifest)
   (:export #:install-system
            #:install-result
            #:make-install-result
@@ -154,6 +155,7 @@
       ;; Create symlinks for provided system names
       (when config
         (create-provides-symlinks name (config-provides config)))
+      (record-file-manifest install-dir)
       (msg "~&Installed ~a ~a to ~a~%" name version install-dir)
       (make-install-result :path install-dir
                            :name name
@@ -179,6 +181,7 @@
                              (format-digest (descriptor-digest layer-desc)))))
         (extract-layer-stripping-prefix blob install-dir strip-prefix)))
     (create-provides-symlinks name (config-provides config))
+    (record-file-manifest install-dir)
     (msg "~&Installed ~a ~a to ~a~%" name version install-dir)
     (make-install-result :path install-dir
                          :name name
@@ -229,6 +232,7 @@
             (if strip-prefix
                 (extract-layer-stripping-prefix blob install-dir strip-prefix)
                 (extract-layer blob install-dir))))
+        (record-file-manifest install-dir)
         (msg "~&Installed ~a ~a to ~a (ocicl)~%" name version install-dir)
         (make-install-result :path install-dir
                              :name name

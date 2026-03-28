@@ -22,6 +22,10 @@
                 #:read-qlfile #:qlot-entry-kind #:qlot-entry-name #:qlot-entry-ref
                 #:qlot-installable-entry-p #:read-qlfile-lock #:build-qlot-sync-plan
                 #:read-qlfile-with-path #:read-qlfile-lock-with-path)
+  (:import-from :cl-repository-client/integrity
+                #:verify-all-systems #:verification-result-name #:verification-result-version
+                #:verification-result-status #:verification-result-modified-files
+                #:verification-result-added-files #:verification-result-removed-files)
   (:export #:cmd-install
            #:cmd-list
            #:cmd-search
@@ -29,6 +33,7 @@
            #:cmd-update
            #:cmd-lock
            #:cmd-restore
+           #:cmd-verify
            #:cmd-sync-qlot))
 (in-package :cl-repository-client/commands)
 
@@ -301,6 +306,38 @@ SOURCE-HANDLER is an optional function called for non-:ql entries."
                    (lockfile-entry-version entry)
                    expected
                    actual)))))))
+
+(defun cmd-verify (&key system-name)
+  "Verify installed systems against their file manifests.
+   Reports modified, added, and removed files.  When SYSTEM-NAME is given,
+   checks only that system; otherwise checks all installed systems."
+  (let ((results (verify-all-systems (systems-root) :system-name system-name))
+        (problems 0))
+    (if (null results)
+        (msg "~&No installed systems found.~%")
+        (progn
+          (dolist (r results)
+            (let ((name (verification-result-name r))
+                  (ver (verification-result-version r))
+                  (status (verification-result-status r)))
+              (case status
+                (:ok
+                 (msg "~&~a ~a  OK~%" name ver))
+                (:no-manifest
+                 (incf problems)
+                 (msg "~&~a ~a  NO MANIFEST (reinstall to generate)~%" name ver))
+                (:modified
+                 (incf problems)
+                 (msg "~&~a ~a  MODIFIED~%" name ver)
+                 (dolist (f (verification-result-modified-files r))
+                   (msg "~&  changed: ~a~%" f))
+                 (dolist (f (verification-result-added-files r))
+                   (msg "~&  added:   ~a~%" f))
+                 (dolist (f (verification-result-removed-files r))
+                   (msg "~&  removed: ~a~%" f))))))
+          (msg "~&~%Verified ~d system~:p: ~d OK, ~d with issues.~%"
+               (length results) (- (length results) problems) problems)))
+    results))
 
 ;;; Helpers
 
