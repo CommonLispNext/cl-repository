@@ -18,6 +18,7 @@
   (:export #:client-source-tree
            #:ensure-default-registry
            #:register-project
+           #:project-registry-directories
            #:discover-project-system
            #:expand-ci-env
            #:cmd-sync
@@ -53,15 +54,29 @@
               directories)
     :ignore-inherited-configuration))
 
+(defun project-registry-directories (directory)
+  "Trees the project registry searches: DIRECTORY, the installed systems,
+   the client tree, and the client install tree (CL_REPOSITORY_DEST).
+   On the ci-base image CL_REPOSITORY_CLIENT_DIR is only the client package;
+   its own deps (alexandria, cl-ppcre, …) sit beside it under
+   CL_REPOSITORY_DEST. Without that tree they stay loaded but unfindable,
+   so the dependency walk reports them missing while the plan skips them
+   as already loaded."
+  (remove-duplicates
+   (remove nil
+           (list (uiop:ensure-directory-pathname directory)
+                 (let ((root (systems-root)))
+                   (when (probe-file root) root))
+                 (ignore-errors (client-source-tree))
+                 (uiop:getenv-absolute-directory "CL_REPOSITORY_DEST")))
+   :test #'uiop:pathname-equal
+   :from-end t))
+
 (defun register-project (directory)
-  "Register the project, the installed systems, and the client tree.
+  "Register the project, the installed systems, and the client trees.
    Does not export CL_SOURCE_REGISTRY and does not inherit it."
-  (let ((dirs (remove-if #'null
-                         (list directory
-                               (let ((root (systems-root)))
-                                 (when (probe-file root) root))
-                               (ignore-errors (client-source-tree))))))
-    (asdf:initialize-source-registry (source-registry-form dirs))))
+  (asdf:initialize-source-registry
+   (source-registry-form (project-registry-directories directory))))
 
 (defun top-level-asds (directory)
   (directory (merge-pathnames "*.asd" (uiop:ensure-directory-pathname directory))))
@@ -328,8 +343,7 @@
     (error "cl-repo: run requires a command"))
   (cmd-sync :directory directory :overlay overlay)
   (let* ((form (format nil "(asdf:initialize-source-registry '~s)"
-                       (source-registry-form
-                        (remove nil (list directory (systems-root) (ignore-errors (client-source-tree)))))))
+                       (source-registry-form (project-registry-directories directory))))
          (args (lisp-startup (first argv) form (rest argv)))
          (code (nth-value 2 (uiop:run-program (cons (first argv) args)
                                               :ignore-error-status t
