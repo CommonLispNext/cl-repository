@@ -1,6 +1,7 @@
 (defpackage :cl-repository-client/tests/project-test
   (:use :cl :rove)
-  (:import-from :cl-repository-client/project #:expand-ci-env #:discover-project-system)
+  (:import-from :cl-repository-client/project #:expand-ci-env #:discover-project-system
+                #:project-registry-directories)
   (:import-from :cl-repository-client/dep-satisfy
                 #:asdf-dep-spec #:system-satisfied-p #:quicklisp-source-p))
 (in-package :cl-repository-client/tests/project-test)
@@ -57,3 +58,32 @@
              (write-line "ql alexandria" out))
            (ok (null (discover-project-system dir))))
       (uiop:delete-directory-tree dir :validate t :if-does-not-exist :ignore))))
+
+(defun call-with-env (name value fn)
+  (let ((previous (uiop:getenv name)))
+    (unwind-protect
+         (progn (setf (uiop:getenv name) value)
+                (funcall fn))
+      (setf (uiop:getenv name) (or previous "")))))
+
+(deftest registry-keeps-the-client-install-tree
+  ;; ci-base: CL_REPOSITORY_CLIENT_DIR is .../cl-oci-X/, its deps live in DEST.
+  (let* ((dest (uiop:ensure-directory-pathname
+                (uiop:merge-pathnames* "cl-repo-dest-test/" (uiop:temporary-directory))))
+         (client (merge-pathnames "cl-oci-0.0.0/" dest))
+         (project (uiop:getcwd)))
+    (call-with-env "CL_REPOSITORY_DEST" (namestring dest)
+      (lambda ()
+        (call-with-env "CL_REPOSITORY_CLIENT_DIR" (namestring client)
+          (lambda ()
+            (let ((dirs (project-registry-directories project)))
+              (ok (member dest dirs :test #'uiop:pathname-equal))
+              (ok (member client dirs :test #'uiop:pathname-equal))
+              (ok (uiop:pathname-equal project (first dirs))))))))))
+
+(deftest registry-lists-each-tree-once
+  (let ((dest (uiop:getcwd)))
+    (call-with-env "CL_REPOSITORY_DEST" (namestring dest)
+      (lambda ()
+        (ok (= 1 (count dest (project-registry-directories dest)
+                        :test #'uiop:pathname-equal)))))))
